@@ -216,7 +216,7 @@ positions at about 1/2 cell resolution; else returns 0.
        * @brief  Updates the cell at index n using the A* heuristic
        * @param n The index to update
        */
-      void updateCellAstar(int n, std::ofstream &file);	/**< updates the cell at index <n>, uses A* heuristic */
+      void updateCellAstar(int n);	/**< updates the cell at index <n>, uses A* heuristic */
 
       void setupNavFn(bool keepit = false); /**< resets all nav fn arrays for propagation */
 

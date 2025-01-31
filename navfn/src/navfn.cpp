@@ -320,6 +320,7 @@ namespace navfn {
     NavFn::calcNavFnAstar()
     {
       setupNavFn(true);
+      std::ofstream file("/home/glab/path_log(12).txt");
 
       // calculate the nav fn and path
       propNavFnAstar(std::max(nx*ny/20,nx+ny));
@@ -523,8 +524,9 @@ namespace navfn {
 #define INVSQRT2 0.707106781
 
   inline void
-    NavFn::updateCellAstar(int n, std::ofstream &file)
+    NavFn::updateCellAstar(int n)
     {
+      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
       // get neighbors
       float u,d,l,r;
       l = potarr[n-1];
@@ -579,13 +581,10 @@ namespace navfn {
           int y = n/nx;
           float dist = hypot(x-start[0], y-start[1])*(float)COST_NEUTRAL;
 
+          file << "Updated Node: (" << x << ", " << y << ") New Cost: " << pot << "\n";
+          file << "Neighbors - Left: " << l << ", Right: " << r << ", Up: " << u << ", Down: " << d << "\n";
           potarr[n] = pot;
           pot += dist;
-
-          file << x << " " << y << " "
-          << "Left: " << l << " Right: " << r << " "
-          << "Up: " << u << " Down: " << d << " "
-          << "Selected Cost: " << pot << "\n";
 
           if (pot < curT)	// low-cost buffer block 
           {
@@ -696,18 +695,12 @@ namespace navfn {
     NavFn::propNavFnAstar(int cycles)	
     {
 
+      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
       std::vector<std::pair<int, int>> path;
 
       int nwv = 0;			// max priority block size
       int nc = 0;			// number of cells put into priority blocks
       int cycle = 0;		// which cycle we're on
-
-      //Open a file to log the data for Python visualization
-      std::ofstream file("/home/glab/astar_data(5).txt");
-      if (!file.is_open()) {
-          ROS_ERROR("Failed to open file for writing: /home/glab/astar_data(5).txt");
-          return false;
-      }
 
       file << "map size : " << ns << " ," << nx << " ," << ny << "\n";  // Map size
 
@@ -723,6 +716,8 @@ namespace navfn {
 
       // set up start cell
       int startCell = start[1]*nx + start[0];
+
+      file << "Cycle, CurrentThreshold, StartCellPotential\n";
 
       // do main cycle
       for (; cycle < cycles; cycle++) // go for this many cycles, unless interrupted
@@ -747,20 +742,10 @@ namespace navfn {
         i = curPe;
         while (i-- > 0)		
         {
-          int cell = *pb++; // 현재 셀
-          updateCellAstar(cell, file);
-
-          //Save data for visualization
-          int x_astar = cell % nx; // x-coordinate
-          int y_astar = cell / ny; // y-coordinate
-          float g_astar = potarr[cell]; // Cost-to-come (G)
-          float h_astar = hypot(goal[0] - x_astar, goal[1] - y_astar) * (float)COST_NEUTRAL; // Heuristic (H)
-          float f_astar = g_astar + h_astar; // Total cost (F)
-
-          file << x_astar << " " << y_astar << " " << "Cost-to-come : " << g_astar << " Heuristic : " << h_astar << " Total cost :" << f_astar << "\n";
-
-          path.emplace_back(x_astar, y_astar);
+          updateCellAstar(*pb++);
         }
+
+        file << cycle << ", " << curT << ", " << potarr[startCell] << "\n";
 
         if (displayInt > 0 &&  (cycle % displayInt) == 0)
           displayFn(this);
@@ -792,11 +777,11 @@ namespace navfn {
       last_path_cost_ = potarr[startCell];
 
       // Save final path to file
-      file << "Final path:\n";
-      for (const auto& p : path)
-          file << p.first << " " << p.second << "\n";
+      // file << "Final path:\n";
+      // for (const auto& p : path)
+      //     file << p.first << " " << p.second << "\n";
 
-      file.close(); 
+      // file.close(); 
 
       ROS_DEBUG("[NavFn] Used %d cycles, %d cells visited (%d%%), priority buf max %d\n", 
           cycle,nc,(int)((nc*100.0)/(ns-nobs)),nwv);
@@ -829,6 +814,7 @@ namespace navfn {
     {
       // test write
       //savemap("test");
+      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
 
       // check path arrays
       if (npathbuf < n)
@@ -850,6 +836,7 @@ namespace navfn {
       float dy=0;
       npath = 0;
 
+      file << "Step, X, Y, Potential\n";
       // go for <n> cycles at most
       for (int i=0; i<n; i++)
       {
@@ -861,6 +848,8 @@ namespace navfn {
           pathy[npath] = (float)goal[1];
           return ++npath;	// done!
         }
+
+        file << i << ", " << pathx[npath] << ", " << pathy[npath] << ", " << potarr[stc] << "\n";
 
         if (stc < nx || stc > ns-nx) // would be out of bounds
         {
@@ -984,6 +973,7 @@ namespace navfn {
       //  return npath;			// out of cycles, return failure
       ROS_DEBUG("[PathCalc] No path found, path too long");
       //savemap("navfn_pathlong");
+      file.close(); 
       return 0;			// out of cycles, return failure
     }
 
