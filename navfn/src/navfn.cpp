@@ -320,7 +320,6 @@ namespace navfn {
     NavFn::calcNavFnAstar()
     {
       setupNavFn(true);
-      std::ofstream file("/home/glab/path_log(12).txt");
 
       // calculate the nav fn and path
       propNavFnAstar(std::max(nx*ny/20,nx+ny));
@@ -526,7 +525,6 @@ namespace navfn {
   inline void
     NavFn::updateCellAstar(int n)
     {
-      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
       // get neighbors
       float u,d,l,r;
       l = potarr[n-1];
@@ -536,6 +534,19 @@ namespace navfn {
       //ROS_INFO("[Update] c: %0.1f  l: %0.1f  r: %0.1f  u: %0.1f  d: %0.1f\n", 
       //	 potarr[n], l, r, u, d);
       // ROS_INFO("[Update] cost of %d: %d\n", n, costarr[n]);
+
+
+      // 여기서 현재 셀(n)의 좌표와 인접 셀들의 cost 값을 파일에 기록합니다.
+      {
+        FILE* fp_update = fopen("/home/glab/navfn_debug.log", "a");
+        if (fp_update) {
+          int x = n % nx;
+          int y = n / nx;
+          fprintf(fp_update, "updateCellAstar: Cell %d (%d, %d): left = %f, right = %f, up = %f, down = %f\n",
+                  n, x, y, l, r, u, d);
+          fclose(fp_update);
+        }
+      }
 
       // find lowest, and its lowest neighbor
       float ta, tc;
@@ -581,10 +592,16 @@ namespace navfn {
           int y = n/nx;
           float dist = hypot(x-start[0], y-start[1])*(float)COST_NEUTRAL;
 
-          file << "Updated Node: (" << x << ", " << y << ") New Cost: " << pot << "\n";
-          file << "Neighbors - Left: " << l << ", Right: " << r << ", Up: " << u << ", Down: " << d << "\n";
           potarr[n] = pot;
           pot += dist;
+
+          {
+            FILE* fp_update2 = fopen("/home/glab/navfn_debug.log", "a");
+            if (fp_update2) {
+              fprintf(fp_update2, "  -> Updated cell %d (%d, %d): new pot = %f (with added heuristic %f)\n", n, x, y, potarr[n], pot);
+              fclose(fp_update2);
+            }
+          }
 
           if (pot < curT)	// low-cost buffer block 
           {
@@ -694,21 +711,16 @@ namespace navfn {
   bool
     NavFn::propNavFnAstar(int cycles)	
     {
+      FILE* fp_cycle = fopen("/home/glab/navfn_debug.log", "w");
+      if (!fp_cycle) {
+        ROS_ERROR("Failed to open navfn_debug.log for writing.");
+      }
 
-      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
-      std::vector<std::pair<int, int>> path;
+      fprintf(fp_cycle, "map size : (%d, %d)", nx, ny);
 
       int nwv = 0;			// max priority block size
       int nc = 0;			// number of cells put into priority blocks
       int cycle = 0;		// which cycle we're on
-
-      file << "map size : " << ns << " ," << nx << " ," << ny << "\n";  // Map size
-
-      //Save start position
-      file << "start position: " << start[0] << " ," << start[1] << "\n"; 
-
-      //Save goal position
-      file << "goal position: " << goal[0] << " ," << goal[1] << "\n";
 
       // set initial threshold, based on distance
       float dist = hypot(goal[0]-start[0], goal[1]-start[1])*(float)COST_NEUTRAL;
@@ -717,14 +729,30 @@ namespace navfn {
       // set up start cell
       int startCell = start[1]*nx + start[0];
 
-      file << "Cycle, CurrentThreshold, StartCellPotential\n";
 
       // do main cycle
       for (; cycle < cycles; cycle++) // go for this many cycles, unless interrupted
       {
-        // 
         if (curPe == 0 && nextPe == 0) // priority blocks empty
           break;
+        
+        fprintf(fp_cycle, "Cycle %d: curT = %f, curPe = %d, nc = %d, nwv = %d\n", cycle, curT, curPe, nc, nwv);
+        // 현재 우선순위 버퍼(curP)에 있는 각 셀에 대해 좌표와 이웃 cost들을 기록합니다.
+        for (int j = 0; j < curPe; j++) {
+          int cell = curP[j];
+          int x = cell % nx;
+          int y = cell / nx;
+          // 경계 체크는 이미 outer bound에서 처리되었으므로, 여기서는 간단히 기록합니다.
+          fprintf(fp_cycle, "  Cell %d (%d, %d): pot = %f, left = %f, right = %f, up = %f, down = %f\n",
+                  cell, x, y,
+                  potarr[cell],
+                  potarr[cell-1],
+                  potarr[cell+1],
+                  potarr[cell-nx],
+                  potarr[cell+nx]);
+        }
+        fprintf(fp_cycle, "\n"); // 사이클 구분을 위한 개행
+        fflush(fp_cycle);  // 즉시 파일에 기록되도록 flush
 
         // stats
         nc += curPe;
@@ -744,8 +772,6 @@ namespace navfn {
         {
           updateCellAstar(*pb++);
         }
-
-        file << cycle << ", " << curT << ", " << potarr[startCell] << "\n";
 
         if (displayInt > 0 &&  (cycle % displayInt) == 0)
           displayFn(this);
@@ -774,14 +800,10 @@ namespace navfn {
 
       }
 
+      if(fp_cycle)
+          fclose(fp_cycle);
+
       last_path_cost_ = potarr[startCell];
-
-      // Save final path to file
-      // file << "Final path:\n";
-      // for (const auto& p : path)
-      //     file << p.first << " " << p.second << "\n";
-
-      // file.close(); 
 
       ROS_DEBUG("[NavFn] Used %d cycles, %d cells visited (%d%%), priority buf max %d\n", 
           cycle,nc,(int)((nc*100.0)/(ns-nobs)),nwv);
@@ -814,7 +836,6 @@ namespace navfn {
     {
       // test write
       //savemap("test");
-      std::ofstream file("/home/glab/path_log(12).txt", std::ios::app);
 
       // check path arrays
       if (npathbuf < n)
@@ -836,7 +857,16 @@ namespace navfn {
       float dy=0;
       npath = 0;
 
-      file << "Step, X, Y, Potential\n";
+        // --- 로그 파일 열기 ---
+      FILE* fp_path = fopen("/home/glab/path_debug.log", "w");
+      if (!fp_path) {
+        ROS_ERROR("Failed to open path_debug.log for writing.");
+      }
+      else {
+        fprintf(fp_path, "Path calc log start\n");
+        fprintf(fp_path, "Start cell: %d (x=%d, y=%d)\n", stc, st[0], st[1]);
+      }
+
       // go for <n> cycles at most
       for (int i=0; i<n; i++)
       {
@@ -846,21 +876,54 @@ namespace navfn {
         {
           pathx[npath] = (float)goal[0];
           pathy[npath] = (float)goal[1];
+          if (fp_path) {
+            fprintf(fp_path, "Iteration %d: reached near goal at cell %d, cost=%.1f\n",
+                    i, nearest_point, potarr[nearest_point]);
+          }
+          fclose(fp_path);
           return ++npath;	// done!
         }
-
-        file << i << ", " << pathx[npath] << ", " << pathy[npath] << ", " << potarr[stc] << "\n";
 
         if (stc < nx || stc > ns-nx) // would be out of bounds
         {
           ROS_DEBUG("[PathCalc] Out of bounds");
+          if(fp_path) {
+            fprintf(fp_path, "Iteration %d: Out of bounds (stc=%d)\n", i, stc);
+            fclose(fp_path);
+          }
           return 0;
         }
 
         // add to path
         pathx[npath] = stc%nx + dx;
         pathy[npath] = stc/nx + dy;
+        if (fp_path) {
+          fprintf(fp_path, "Iteration %d: cell %d (x=%.1f,y=%.1f), cost=%.1f, dx=%.3f, dy=%.3f\n",
+                  i, stc, pathx[npath], pathy[npath], potarr[stc], dx, dy);
+        }
         npath++;
+  
+        // --- 추가: 현재 셀 주변 potarr 윈도우 dump ---
+        if (fp_path) {
+          // 현재 셀의 (x,y) 좌표 계산
+          int cur_x = stc % nx;
+          int cur_y = stc / nx;
+          // 윈도우 크기 (예: 현재 셀을 중심으로 +/- 5 셀)
+          int win = 5;
+          int start_row = cur_y - win; if (start_row < 0) start_row = 0;
+          int end_row   = cur_y + win; if (end_row >= ny) end_row = ny - 1;
+          int start_col = cur_x - win; if (start_col < 0) start_col = 0;
+          int end_col   = cur_x + win; if (end_col >= nx) end_col = nx - 1;
+          fprintf(fp_path, "Iteration %d: potarr window around cell (%d,%d):\n", i, cur_x, cur_y);
+          for (int row = start_row; row <= end_row; row++) {
+            for (int col = start_col; col <= end_col; col++) {
+              int idx = row * nx + col;
+              fprintf(fp_path, "%10.1f ", potarr[idx]);
+            }
+            fprintf(fp_path, "\n");
+          }
+          fprintf(fp_path, "\n");
+        }
 
         bool oscillation_detected = false;
         if( npath > 2 &&
@@ -868,6 +931,8 @@ namespace navfn {
             pathy[npath-1] == pathy[npath-3] )
         {
           ROS_DEBUG("[PathCalc] oscillation detected, attempting fix.");
+          if (fp_path)
+            fprintf(fp_path, "Iteration %d: oscillation detected\n", i);
           oscillation_detected = true;
         }
 
@@ -887,6 +952,9 @@ namespace navfn {
             oscillation_detected)
         {
           ROS_DEBUG("[Path] Pot fn boundary, following grid (%0.1f/%d)", potarr[stc], npath);
+          if (fp_path)
+            fprintf(fp_path, "Iteration %d: High potential or oscillation, following grid. Current cost=%.1f\n", i, potarr[stc]);
+          
           // check eight neighbors to find the lowest
           int minc = stc;
           int minp = potarr[stc];
@@ -910,6 +978,10 @@ namespace navfn {
           dx = 0;
           dy = 0;
 
+          if (fp_path)
+            fprintf(fp_path, "Iteration %d: Selected grid neighbor: cell %d, cost=%.1f\n", i, stc, potarr[stc]);
+
+
           ROS_DEBUG("[Path] Pot: %0.1f  pos: %0.1f,%0.1f",
               potarr[stc], pathx[npath-1], pathy[npath-1]);
 
@@ -917,6 +989,10 @@ namespace navfn {
           {
             ROS_DEBUG("[PathCalc] No path found, high potential");
             //savemap("navfn_highpot");
+            if (fp_path) {
+              fprintf(fp_path, "Iteration %d: No path found, potential too high: %.1f\n", i, potarr[stc]);
+              fclose(fp_path);
+            }
             return 0;
           }
         }
@@ -940,6 +1016,15 @@ namespace navfn {
           float y2 = (1.0-dx)*grady[stcnx] + dx*grady[stcnx+1];
           float y = (1.0-dy)*y1 + dy*y2; // interpolated y
 
+          if (fp_path)
+          {
+            fprintf(fp_path, "Iteration %d: Gradient at stc=%d: (%.2f,%.2f)\n", i, stc, gradx[stc], grady[stc]);
+            fprintf(fp_path, "Iteration %d: Gradient at stc+1=%d: (%.2f,%.2f)\n", i, stc+1, gradx[stc+1], grady[stc+1]);
+            fprintf(fp_path, "Iteration %d: Gradient at stcnx=%d: (%.2f,%.2f)\n", i, stcnx, gradx[stcnx], grady[stcnx]);
+            fprintf(fp_path, "Iteration %d: Gradient at stcnx+1=%d: (%.2f,%.2f)\n", i, stcnx+1, gradx[stcnx+1], grady[stcnx+1]);
+            fprintf(fp_path, "Iteration %d: Interpolated gradient: (x=%.3f, y=%.3f)\n", i, x, y);
+          }
+
           // show gradients
           ROS_DEBUG("[Path] %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f; final x=%.3f, y=%.3f\n",
                     gradx[stc], grady[stc], gradx[stc+1], grady[stc+1], 
@@ -950,6 +1035,10 @@ namespace navfn {
           if (x == 0.0 && y == 0.0)
           {
             ROS_DEBUG("[PathCalc] Zero gradient");	  
+            if (fp_path) {
+              fprintf(fp_path, "Iteration %d: Zero gradient encountered, aborting path\n", i);
+              fclose(fp_path);
+            }
             return 0;
           }
 
@@ -972,8 +1061,11 @@ namespace navfn {
 
       //  return npath;			// out of cycles, return failure
       ROS_DEBUG("[PathCalc] No path found, path too long");
+      if (fp_path) {
+        fprintf(fp_path, "No path found within maximum iterations\n");
+        fclose(fp_path);
+      }
       //savemap("navfn_pathlong");
-      file.close(); 
       return 0;			// out of cycles, return failure
     }
 
