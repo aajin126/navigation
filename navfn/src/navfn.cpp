@@ -939,18 +939,20 @@ namespace navfn {
         int stcnx = stc+nx;
         int stcpx = stc-nx;
 
-        // check for potentials at eight positions near cell
-        if (potarr[stc] >= POT_HIGH ||
-            potarr[stc+1] >= POT_HIGH ||
-            potarr[stc-1] >= POT_HIGH ||
-            potarr[stcnx] >= POT_HIGH ||
-            potarr[stcnx+1] >= POT_HIGH ||
-            potarr[stcnx-1] >= POT_HIGH ||
-            potarr[stcpx] >= POT_HIGH ||
-            potarr[stcpx+1] >= POT_HIGH ||
-            potarr[stcpx-1] >= POT_HIGH ||
-            oscillation_detected)
-        {
+
+        // Grid base Astar
+        // // check for potentials at eight positions near cell
+        // if (potarr[stc] >= POT_HIGH ||
+        //     potarr[stc+1] >= POT_HIGH ||
+        //     potarr[stc-1] >= POT_HIGH ||
+        //     potarr[stcnx] >= POT_HIGH ||
+        //     potarr[stcnx+1] >= POT_HIGH ||
+        //     potarr[stcnx-1] >= POT_HIGH ||
+        //     potarr[stcpx] >= POT_HIGH ||
+        //     potarr[stcpx+1] >= POT_HIGH ||
+        //     potarr[stcpx-1] >= POT_HIGH ||
+        //     oscillation_detected)
+        // {
           ROS_DEBUG("[Path] Pot fn boundary, following grid (%0.1f/%d)", potarr[stc], npath);
           if (fp_path)
             fprintf(fp_path, "Iteration %d: High potential or oscillation, following grid. Current cost=%.1f\n", i, potarr[stc]);
@@ -995,65 +997,65 @@ namespace navfn {
             }
             return 0;
           }
-        }
+        // }
 
-        // have a good gradient here
-        else			
-        {
+        // // have a good gradient here
+        // else			
+        // {
 
-          // get grad at four positions near cell
-          gradCell(stc);
-          gradCell(stc+1);
-          gradCell(stcnx);
-          gradCell(stcnx+1);
+        //   // get grad at four positions near cell
+        //   gradCell(stc);
+        //   gradCell(stc+1);
+        //   gradCell(stcnx);
+        //   gradCell(stcnx+1);
 
 
-          // get interpolated gradient
-          float x1 = (1.0-dx)*gradx[stc] + dx*gradx[stc+1];
-          float x2 = (1.0-dx)*gradx[stcnx] + dx*gradx[stcnx+1];
-          float x = (1.0-dy)*x1 + dy*x2; // interpolated x
-          float y1 = (1.0-dx)*grady[stc] + dx*grady[stc+1];
-          float y2 = (1.0-dx)*grady[stcnx] + dx*grady[stcnx+1];
-          float y = (1.0-dy)*y1 + dy*y2; // interpolated y
+        //   // get interpolated gradient
+        //   float x1 = (1.0-dx)*gradx[stc] + dx*gradx[stc+1];
+        //   float x2 = (1.0-dx)*gradx[stcnx] + dx*gradx[stcnx+1];
+        //   float x = (1.0-dy)*x1 + dy*x2; // interpolated x
+        //   float y1 = (1.0-dx)*grady[stc] + dx*grady[stc+1];
+        //   float y2 = (1.0-dx)*grady[stcnx] + dx*grady[stcnx+1];
+        //   float y = (1.0-dy)*y1 + dy*y2; // interpolated y
 
-          if (fp_path)
-          {
-            fprintf(fp_path, "Iteration %d: Gradient at stc=%d: (%.2f,%.2f)\n", i, stc, gradx[stc], grady[stc]);
-            fprintf(fp_path, "Iteration %d: Gradient at stc+1=%d: (%.2f,%.2f)\n", i, stc+1, gradx[stc+1], grady[stc+1]);
-            fprintf(fp_path, "Iteration %d: Gradient at stcnx=%d: (%.2f,%.2f)\n", i, stcnx, gradx[stcnx], grady[stcnx]);
-            fprintf(fp_path, "Iteration %d: Gradient at stcnx+1=%d: (%.2f,%.2f)\n", i, stcnx+1, gradx[stcnx+1], grady[stcnx+1]);
-            fprintf(fp_path, "Iteration %d: Interpolated gradient: (x=%.3f, y=%.3f)\n", i, x, y);
-          }
+        //   if (fp_path)
+        //   {
+        //     fprintf(fp_path, "Iteration %d: Gradient at stc=%d: (%.2f,%.2f)\n", i, stc, gradx[stc], grady[stc]);
+        //     fprintf(fp_path, "Iteration %d: Gradient at stc+1=%d: (%.2f,%.2f)\n", i, stc+1, gradx[stc+1], grady[stc+1]);
+        //     fprintf(fp_path, "Iteration %d: Gradient at stcnx=%d: (%.2f,%.2f)\n", i, stcnx, gradx[stcnx], grady[stcnx]);
+        //     fprintf(fp_path, "Iteration %d: Gradient at stcnx+1=%d: (%.2f,%.2f)\n", i, stcnx+1, gradx[stcnx+1], grady[stcnx+1]);
+        //     fprintf(fp_path, "Iteration %d: Interpolated gradient: (x=%.3f, y=%.3f)\n", i, x, y);
+        //   }
 
-          // show gradients
-          ROS_DEBUG("[Path] %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f; final x=%.3f, y=%.3f\n",
-                    gradx[stc], grady[stc], gradx[stc+1], grady[stc+1], 
-                    gradx[stcnx], grady[stcnx], gradx[stcnx+1], grady[stcnx+1],
-                    x, y);
+        //   // show gradients
+        //   ROS_DEBUG("[Path] %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f  %0.2f,%0.2f; final x=%.3f, y=%.3f\n",
+        //             gradx[stc], grady[stc], gradx[stc+1], grady[stc+1], 
+        //             gradx[stcnx], grady[stcnx], gradx[stcnx+1], grady[stcnx+1],
+        //             x, y);
 
-          // check for zero gradient, failed
-          if (x == 0.0 && y == 0.0)
-          {
-            ROS_DEBUG("[PathCalc] Zero gradient");	  
-            if (fp_path) {
-              fprintf(fp_path, "Iteration %d: Zero gradient encountered, aborting path\n", i);
-              fclose(fp_path);
-            }
-            return 0;
-          }
+        //   // check for zero gradient, failed
+        //   if (x == 0.0 && y == 0.0)
+        //   {
+        //     ROS_DEBUG("[PathCalc] Zero gradient");	  
+        //     if (fp_path) {
+        //       fprintf(fp_path, "Iteration %d: Zero gradient encountered, aborting path\n", i);
+        //       fclose(fp_path);
+        //     }
+        //     return 0;
+        //   }
 
-          // move in the right direction
-          float ss = pathStep/hypot(x, y);
-          dx += x*ss;
-          dy += y*ss;
+        //   // move in the right direction
+        //   float ss = pathStep/hypot(x, y);
+        //   dx += x*ss;
+        //   dy += y*ss;
 
-          // check for overflow
-          if (dx > 1.0) { stc++; dx -= 1.0; }
-          if (dx < -1.0) { stc--; dx += 1.0; }
-          if (dy > 1.0) { stc+=nx; dy -= 1.0; }
-          if (dy < -1.0) { stc-=nx; dy += 1.0; }
+        //   // check for overflow
+        //   if (dx > 1.0) { stc++; dx -= 1.0; }
+        //   if (dx < -1.0) { stc--; dx += 1.0; }
+        //   if (dy > 1.0) { stc+=nx; dy -= 1.0; }
+        //   if (dy < -1.0) { stc-=nx; dy += 1.0; }
 
-        }
+        // }
 
         //      ROS_INFO("[Path] Pot: %0.1f  grad: %0.1f,%0.1f  pos: %0.1f,%0.1f\n",
         //	     potarr[stc], x, y, pathx[npath-1], pathy[npath-1]);
