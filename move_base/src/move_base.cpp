@@ -658,6 +658,19 @@ namespace move_base {
       as_->setAborted(move_base_msgs::MoveBaseResult(), "Aborting on goal because it was sent with an invalid quaternion");
       return;
     }
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+
+    std::ostringstream oss;
+    oss << "/home/glab/tmp/OURS/Planning/execution_time_"
+        << std::put_time(std::localtime(&now_c), "%Y-%m-%d_%H-%M-%S")
+        << ".txt";
+    std::string filename = oss.str();
+
+    ros::NodeHandle pnh("~");          // move_base private
+    std::string planner_ns = "TebLocalPlannerROS"; // 실제 인스턴스/네임스페이스명
+    ros::NodeHandle teb_nh(pnh, planner_ns);
+    teb_nh.setParam("log_filename", filename);
 
     geometry_msgs::PoseStamped goal = goalToGlobalFrame(move_base_goal->target_pose);
 
