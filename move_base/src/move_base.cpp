@@ -662,7 +662,7 @@ namespace move_base {
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
 
     std::ostringstream oss;
-    oss << "/home/glab/tmp/OURS/Planning/execution_time_"
+    oss << "/home/glab/tmp/TEB/Planning/execution_time_"
         << std::put_time(std::localtime(&now_c), "%Y-%m-%d_%H-%M-%S")
         << ".txt";
     std::string filename = oss.str();
