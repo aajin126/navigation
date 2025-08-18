@@ -667,8 +667,8 @@ namespace move_base {
         << ".txt";
     std::string filename = oss.str();
 
-    ros::NodeHandle pnh("~");          // move_base private
-    std::string planner_ns = "TebLocalPlannerROS"; // 실제 인스턴스/네임스페이스명
+    ros::NodeHandle pnh("~");   
+    std::string planner_ns = "TebLocalPlannerROS";
     ros::NodeHandle teb_nh(pnh, planner_ns);
     teb_nh.setParam("log_filename", filename);
 
